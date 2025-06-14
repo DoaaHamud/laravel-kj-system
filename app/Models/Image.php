@@ -10,4 +10,9 @@ class Image extends Model
         'meal_id',
         'image'
     ];
+
+    public function meal()
+    {
+        return $this->belongsTo(Meal::class);
+    }
 }

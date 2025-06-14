@@ -18,4 +18,8 @@ class Report extends Model
     {
         return $this->belongsTo(Child::class);
     }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

@@ -9,6 +9,7 @@ use App\Models\Child;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class ChildController extends Controller
 {
@@ -16,6 +17,7 @@ class ChildController extends Controller
     {
 
         try {
+            Gate::authorize('create', Child::class);
             $user_id = Auth::user()->id;
             $dataValidate = $request->validated();
             $dataValidate['user_id'] = $user_id;
@@ -49,6 +51,7 @@ class ChildController extends Controller
 
     public function index()
     {
+        Gate::authorize('index', Child::class);
         $children = Auth::user()->children;
         return response()->json(
             [
@@ -63,6 +66,7 @@ class ChildController extends Controller
     public function update(UpdateChildRequest $request, $id)
     {
         try {
+            Gate::authorize('update', Child::class);
             $user_id = Auth::user()->id;
             $children = Child::findOrFail($id);
 
@@ -90,17 +94,64 @@ class ChildController extends Controller
     }
 
     public function destroy($id)
+    {
+        Gate::authorize('delete', Child::class);
+        $user_id = Auth::user()->id;
+        $child = Child::findOrFail($id);
+
+
+        if ($child->user_id != $user_id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $child->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function assignMeal(Request $request, $child_Id)
+    {
+        Gate::authorize('update', Child::class);
+
+        $child = Child::findOrFail($child_Id);
+
+        // تحقق من أن الطفل يخص المستخدم الحالي
+        if ($child->user_id != Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'meal_id' => 'required|exists:meals,id',
+        ]);
+
+        // إرفاق الوجبة بالطفل
+        $child->meals()->attach($validated['meal_id']);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Meal assigned to child successfully'
+        ]);
+    }
+
+    public function getChildMeals($childId)
 {
-    $user_id = Auth::user()->id; 
-    $child = Child::findOrFail($id);
+    Gate::authorize('view', Child::class); // أو الصلاحية المناسبة عندك
 
+    $child = Child::findOrFail($childId);
 
-    if ($child->user_id != $user_id) {
+    // تأكدي أن الطفل يخص المستخدم
+    if ($child->user_id != Auth::id()) {
         return response()->json(['message' => 'Unauthorized'], 403);
     }
 
-    $child->delete();
+    // تحميل الوجبات المرتبطة
+    $child->load('meals');
 
-    return response()->json(null, 204);
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Child meals retrieved successfully',
+        'data' => $child->meals
+    ]);
 }
+
 }

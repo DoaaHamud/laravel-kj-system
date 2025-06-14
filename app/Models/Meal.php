@@ -17,4 +17,9 @@ class Meal extends Model
     {
         return $this->belongsToMany(Child::class,'_child__meal');
     }
+
+     public function images()
+    {
+        return $this->hasMany(Image::class);
+    }
 }
